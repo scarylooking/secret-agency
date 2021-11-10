@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SecretAgency.Models;
-using SecretAgency.Services;
 using SecretAgency.Services.Interfaces;
 
 namespace SecretAgency.Controllers
@@ -31,29 +30,57 @@ namespace SecretAgency.Controllers
         }
 
         [HttpGet]
-        [Route("{id:guid}")]
-
-        public async Task<ActionResult<Mission>> GetMissionById(Guid id)
+        [Route("{missionId:guid}")]
+        public async Task<ActionResult<Mission>> GetMissionById(Guid missionId)
         {
-            var mission = await _missionService.GetMissionById(id);
+            if (!await _missionService.MissionExists(missionId))
+            {
+                return NotFound();
+            }
 
-            return mission == default ? NotFound(id) : Ok(mission);
+            var mission = await _missionService.GetMissionById(missionId);
+
+            return mission == default ? NotFound(missionId) : Ok(mission);
         }
 
         [HttpPut]
         public async Task<ActionResult<Mission>> UpdateMission([FromBody] Mission updatedMission)
         {
+            if (!await _missionService.MissionExists(updatedMission.Id))
+            {
+                return NotFound();
+            }
+
             var result = await _missionService.UpdateMission(updatedMission);
-            
-            return result ? Ok(updatedMission) : BadRequest();
+
+            return result != default ? Ok(updatedMission) : BadRequest();
         }
 
         [HttpPost]
         public async Task<ActionResult<Mission>> AddMission([FromBody] Mission newMission)
         {
+            if (await _missionService.MissionExists(newMission.Id))
+            {
+                return Conflict();
+            }
+
             var result = await _missionService.AddMission(newMission);
 
-            return result ? Ok(newMission) : Conflict(newMission.Id);
+            return result != default ? Ok(newMission) : BadRequest();
+        }
+
+        [HttpDelete]
+        [Route("{missionId:guid}")]
+        public async Task<ActionResult<Mission>> DeleteMission(Guid missionId)
+        {
+            if (!await _missionService.MissionExists(missionId))
+            {
+                return NotFound();
+            }
+
+            var result = await _missionService.DeleteMission(missionId);
+
+            return result ? Ok() : BadRequest();
         }
     }
 }
