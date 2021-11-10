@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SecretAgency.Repositories;
 using SecretAgency.Services;
 using SecretAgency.Services.Interfaces;
 using SecretAgency.Utility;
@@ -86,8 +87,8 @@ namespace SecretAgency.Extensions
         {
             services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
             services.AddSingleton<IMongoConnectionService, MongoConnectionService>();
+            services.AddSingleton<IMissionRepository, MongoMissionRepository>();
             services.AddTransient<IMissionService, MissionService>();
-            services.AddTransient<IAgentService, AgentService>();
 
             return services;
         }

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
 using SecretAgency.Models;
+using SecretAgency.Repositories;
 using SecretAgency.Services.Interfaces;
 using Serilog;
 
@@ -11,57 +12,56 @@ namespace SecretAgency.Services
 {
     public class MissionService : IMissionService
     {
-        private readonly IMongoCollection<Mission> _missions;
-
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
+        private readonly IMissionRepository _missionRepository;
 
-        public MissionService(IConfiguration configuration, IMongoConnectionService mongoConnectionService)
+        public MissionService(IConfiguration configuration, IMissionRepository missionRepository)
         {
             _logger = Log.ForContext<MissionService>();
-            _missions = mongoConnectionService.GetMissionCollection();
+            _missionRepository = missionRepository;
 
             _configuration = configuration;
         }
 
-        public async Task<bool> DeleteMission(Guid missionId)
+        public async Task<bool> DeleteMission(Guid id)
         {
             try
             {
-                await _missions.FindOneAndDeleteAsync(m => m.Id == missionId);
+                await _missionRepository.Delete(id);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to delete mission with ID {MissionId}", missionId);
+                _logger.Error(ex, "Failed to delete mission with ID {MissionId}", id);
                 return false;
             }
         }
 
-        public async Task<Mission> UpdateMission(Mission updatedMission)
+        public async Task<Mission> UpdateMission(Mission mission)
         {
             try
             {
-                await _missions.ReplaceOneAsync(m => m.Id.Equals(updatedMission.Id), updatedMission);
-                return updatedMission;
+                await _missionRepository.Update(mission.Id, mission);
+                return mission;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to update mission with ID {MissionId} to state {@Mission}", updatedMission.Id, updatedMission);
+                _logger.Error(ex, "Failed to update mission with ID {MissionId} to state {@Mission}", mission.Id, mission);
                 return default;
             }
         }
 
-        public async Task<Mission> AddMission(Mission newMission)
+        public async Task<Mission> AddMission(Mission mission)
         {
             try
             {
-                await _missions.InsertOneAsync(newMission);
-                return newMission;
+                await _missionRepository.Create(mission);
+                return mission;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create new mission with ID {MissionId} {@Mission}", newMission.Id, newMission);
+                _logger.Error(ex, "Failed to create new mission with ID {MissionId} {@Mission}", mission.Id, mission);
                 return default;
             }
         }
@@ -70,9 +70,9 @@ namespace SecretAgency.Services
         {
             try
             {
-                var result = await _missions.FindAsync(m => true);
+                var result = await _missionRepository.GetAll();
+                return result.ToArray();
 
-                return result.ToList();
             }
             catch (Exception ex)
             {
@@ -81,24 +81,23 @@ namespace SecretAgency.Services
             }
         }
 
-        public async Task<Mission> GetMissionById(Guid missionId)
+        public async Task<Mission> GetMissionById(Guid id)
         {
             try
             {
-                var result = await _missions.FindAsync(m => m.Id.Equals(missionId));
-                return result.FirstOrDefault();
+                var result = await _missionRepository.Get(id);
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to get mission {MissionId}", missionId);
+                _logger.Error(ex, "Failed to get mission {MissionId}", id);
                 return default;
             }
         }
 
-        public async Task<bool> MissionExists(Guid missionId)
+        public async Task<bool> MissionExists(Guid id)
         {
-            var count = await _missions.CountDocumentsAsync(m => m.Id.Equals(missionId));
-            return count > 0;
+            return await _missionRepository.Exists(id);
         }
     }
 }

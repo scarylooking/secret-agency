@@ -7,7 +7,7 @@ namespace SecretAgency.Services.Interfaces
 {
     public interface IMissionService
     {
-        Task<Mission> AddMission(Mission newMission);
+        Task<Mission> AddMission(Mission mission);
         Task<bool> DeleteMission(Guid missionId);
         Task<Mission> UpdateMission(Mission updatedMission);
         Task<IReadOnlyCollection<Mission>> GetAllMissions();
