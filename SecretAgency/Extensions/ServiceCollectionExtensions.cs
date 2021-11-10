@@ -75,6 +75,7 @@ namespace SecretAgency.Extensions
         public static IServiceCollection SetupDependencies(this IServiceCollection services)
         {
             services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
+            services.AddSingleton<IMissionDataService, MissionDataService>();
 
             return services;
         }
