@@ -15,9 +15,9 @@ namespace SecretAgency.Controllers
     {
         private readonly IMissionDataService _missionDataService;
 
-        private readonly ILogger<WeatherForecastController> _logger;
+        private readonly ILogger<MissionController> _logger;
 
-        public MissionController(ILogger<WeatherForecastController> logger, IMissionDataService missionDataService)
+        public MissionController(ILogger<MissionController> logger, IMissionDataService missionDataService)
         {
             _logger = logger;
             _missionDataService = missionDataService;
