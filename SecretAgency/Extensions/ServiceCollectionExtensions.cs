@@ -85,6 +85,7 @@ namespace SecretAgency.Extensions
         {
             services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
             services.AddSingleton<IMissionDataService, MissionDataService>();
+            services.AddSingleton<IAgentDataService, AgentDataService>();
 
             return services;
         }
