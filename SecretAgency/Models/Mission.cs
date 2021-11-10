@@ -14,7 +14,7 @@ namespace SecretAgency.Models
         public IEnumerable<Point> Reward { get; init; }
         public DateTime ValidFromUTC { get; init; }
         public DateTime ValidToUTC { get; init; }
-        public bool HasTimeLimit => ValidFromUTC == DateTime.MinValue && ValidToUTC == DateTime.MaxValue;
+        public bool HasTimeLimit => ValidFromUTC != DateTime.MinValue || ValidToUTC != DateTime.MaxValue;
 
         public Mission()
         {
