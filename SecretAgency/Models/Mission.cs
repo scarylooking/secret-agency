@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Serializers;
 
 namespace SecretAgency.Models
 {
     public class Mission
     {
+        [BsonId]
         public Guid Id { get; init; }
         public string Title { get; init; }
         public string Description { get; init; }
@@ -14,6 +17,8 @@ namespace SecretAgency.Models
         public IEnumerable<Point> Reward { get; init; }
         public DateTime ValidFromUTC { get; init; }
         public DateTime ValidToUTC { get; init; }
+
+        [BsonIgnore]
         public bool HasTimeLimit => ValidFromUTC != DateTime.MinValue || ValidToUTC != DateTime.MaxValue;
 
         public Mission()

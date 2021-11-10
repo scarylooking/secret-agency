@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SecretAgency.Models;
 using SecretAgency.Services;
+using SecretAgency.Services.Interfaces;
 
 namespace SecretAgency.Controllers
 {
@@ -13,48 +15,43 @@ namespace SecretAgency.Controllers
     [Route("api/mission")]
     public class MissionController : ControllerBase
     {
-        private readonly IMissionDataService _missionDataService;
-
+        private readonly IMissionService _missionService;
         private readonly ILogger<MissionController> _logger;
 
-        public MissionController(ILogger<MissionController> logger, IMissionDataService missionDataService)
+        public MissionController(ILogger<MissionController> logger, IMissionService missionService)
         {
             _logger = logger;
-            _missionDataService = missionDataService;
+            _missionService = missionService;
         }
 
         [HttpGet]
-        public IEnumerable<Mission> Get()
+        public async Task<IEnumerable<Mission>> Get()
         {
-            return _missionDataService.GetAllMissions();
+            return await _missionService.GetAllMissions();
         }
 
         [HttpGet]
         [Route("{id:guid}")]
 
-        public ActionResult<Mission> GetMissionById(Guid id)
+        public async Task<ActionResult<Mission>> GetMissionById(Guid id)
         {
-            var mission = _missionDataService.GetMissionById(id);
+            var mission = await _missionService.GetMissionById(id);
 
             return mission == default ? NotFound(id) : Ok(mission);
         }
 
-        [HttpPost]
-        [Route("{id:guid}")]
-
-        public ActionResult<Mission> UpdateMission(Guid id, [FromBody] Mission updatedMission)
+        [HttpPut]
+        public async Task<ActionResult<Mission>> UpdateMission([FromBody] Mission updatedMission)
         {
-            if (!_missionDataService.MissionExists(id)) return NotFound(updatedMission.Id);
-
-            var result = _missionDataService.UpdateMission(id, updatedMission);
+            var result = await _missionService.UpdateMission(updatedMission);
             
             return result ? Ok(updatedMission) : BadRequest();
         }
 
         [HttpPost]
-        public ActionResult<Mission> AddMission([FromBody] Mission newMission)
+        public async Task<ActionResult<Mission>> AddMission([FromBody] Mission newMission)
         {
-            var result = _missionDataService.AddMission(newMission);
+            var result = await _missionService.AddMission(newMission);
 
             return result ? Ok(newMission) : Conflict(newMission.Id);
         }

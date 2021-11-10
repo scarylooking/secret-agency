@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SecretAgency.Services;
+using SecretAgency.Services.Interfaces;
 using SecretAgency.Utility;
 
 namespace SecretAgency.Extensions
@@ -56,7 +57,7 @@ namespace SecretAgency.Extensions
                 {
                     options.Authority = configuration["Authentication:Auth0:Domain"];
                     options.Audience = configuration["Authentication:Auth0:Audience"];
-                    
+
                     // var x  = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -84,8 +85,9 @@ namespace SecretAgency.Extensions
         public static IServiceCollection SetupDependencies(this IServiceCollection services)
         {
             services.AddSingleton<IWeatherForecastService, WeatherForecastService>();
-            services.AddSingleton<IMissionDataService, MissionDataService>();
-            services.AddSingleton<IAgentDataService, AgentDataService>();
+            services.AddSingleton<IMongoConnectionService, MongoConnectionService>();
+            services.AddTransient<IMissionService, MissionService>();
+            services.AddTransient<IAgentService, AgentService>();
 
             return services;
         }
