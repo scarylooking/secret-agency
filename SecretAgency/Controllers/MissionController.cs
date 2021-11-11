@@ -40,33 +40,33 @@ namespace SecretAgency.Controllers
 
             var mission = await _missionService.GetMissionById(missionId);
 
-            return mission == default ? NotFound(missionId) : Ok(mission);
+            return mission != default ? Ok(mission) : BadRequest(missionId);
         }
 
         [HttpPut]
-        public async Task<ActionResult<Mission>> UpdateMission([FromBody] Mission updatedMission)
+        public async Task<ActionResult<Mission>> UpdateMission([FromBody] Mission mission)
         {
-            if (!await _missionService.MissionExists(updatedMission.Id))
+            if (!await _missionService.MissionExists(mission.Id))
             {
                 return NotFound();
             }
 
-            var result = await _missionService.UpdateMission(updatedMission);
+            var result = await _missionService.UpdateMission(mission);
 
-            return result != default ? Ok(updatedMission) : BadRequest();
+            return result != default ? Ok(mission) : BadRequest();
         }
 
         [HttpPost]
-        public async Task<ActionResult<Mission>> AddMission([FromBody] Mission newMission)
+        public async Task<ActionResult<Mission>> AddMission([FromBody] Mission mission)
         {
-            if (await _missionService.MissionExists(newMission.Id))
+            if (await _missionService.MissionExists(mission.Id))
             {
                 return Conflict();
             }
 
-            var result = await _missionService.AddMission(newMission);
+            var result = await _missionService.AddMission(mission);
 
-            return result != default ? Ok(newMission) : BadRequest();
+            return result != default ? Ok(mission) : BadRequest();
         }
 
         [HttpDelete]

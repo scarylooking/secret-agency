@@ -24,7 +24,7 @@ namespace SecretAgency.Controllers
         }
 
         [HttpGet]
-        [Route("api/missionreport/pending")]
+        [Route("pending")]
         public async Task<IEnumerable<MissionReport>> GetPending()
         {
             return await _missionReportService.GetPendingReports();
@@ -41,7 +41,7 @@ namespace SecretAgency.Controllers
 
             var missionReport = await _missionReportService.GetMissionReportById(missionReportId);
 
-            return missionReport == default ? NotFound(missionReportId) : Ok(missionReport);
+            return missionReport != default ? Ok(missionReport) : BadRequest();
         }
 
         [HttpPatch]
@@ -55,7 +55,7 @@ namespace SecretAgency.Controllers
 
             var missionReport = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Approved);
 
-            return missionReport == default ? BadRequest(missionReportId) : Ok(missionReport);
+            return missionReport != default ? Ok(missionReport) : BadRequest();
         }
 
         [HttpPatch]
@@ -69,7 +69,7 @@ namespace SecretAgency.Controllers
 
             var missionReport = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Rejected);
 
-            return missionReport == default ? BadRequest(missionReportId) : Ok(missionReport);
+            return missionReport != default ? Ok(missionReport) : BadRequest();
         }
 
         [HttpPut]
