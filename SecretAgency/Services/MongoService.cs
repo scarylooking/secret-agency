@@ -8,12 +8,14 @@ namespace SecretAgency.Services
     public interface IMongoConnectionService
     {
         IMongoCollection<Mission> GetMissionCollection();
+        IMongoCollection<MissionReport> GetMissionReportCollection();
     }
 
     public class MongoConnectionService : IMongoConnectionService
     {
         private readonly IMongoDatabase _database;
         private IMongoCollection<Mission> _missionCollection;
+        private IMongoCollection<MissionReport> _missionReportCollection;
         private readonly IConfiguration _configuration;
         private readonly ILogger<MongoConnectionService> _logger;
 
@@ -27,5 +29,6 @@ namespace SecretAgency.Services
         }
 
         public IMongoCollection<Mission> GetMissionCollection() => _missionCollection ??= _database.GetCollection<Mission>(_configuration["Database:MongoDB:CollectionNames:Mission"]);
+        public IMongoCollection<MissionReport> GetMissionReportCollection() => _missionReportCollection ??= _database.GetCollection<MissionReport>(_configuration["Database:MongoDB:CollectionNames:MissionReport"]);
     }
 }

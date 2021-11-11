@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using SecretAgency.Models;
-using SecretAgency.Repositories;
+using SecretAgency.Repositories.Interfaces;
 using SecretAgency.Services.Interfaces;
 using Serilog;
 

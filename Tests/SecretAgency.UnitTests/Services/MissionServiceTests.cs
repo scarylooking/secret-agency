@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using SecretAgency.Controllers;
 using SecretAgency.Repositories;
+using SecretAgency.Repositories.Interfaces;
 using SecretAgency.Services;
 using SecretAgency.Services.Interfaces;
 using Xunit;

@@ -20,6 +20,7 @@ namespace SecretAgency.Models
 
         public Mission()
         {
+            Id = Guid.NewGuid();
             ValidFromUTC = DateTime.MinValue;
             ValidToUTC = DateTime.MaxValue;
         }

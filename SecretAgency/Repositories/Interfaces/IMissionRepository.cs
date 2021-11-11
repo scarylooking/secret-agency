@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using SecretAgency.Models;
 
-namespace SecretAgency.Repositories
+namespace SecretAgency.Repositories.Interfaces
 {
     public interface IMissionRepository
     {
