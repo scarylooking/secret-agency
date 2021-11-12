@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using SecretAgency.Constants;
 using SecretAgency.Models;
 
 namespace SecretAgency.Services.Interfaces

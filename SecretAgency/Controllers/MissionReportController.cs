@@ -82,14 +82,19 @@ namespace SecretAgency.Controllers
         }
 
         [HttpPut]
-        public async Task<ActionResult<MissionReport>> UpdateMission([FromBody] MissionReport missionReport)
+        [Route("{missionReportId:guid}")]
+        public async Task<ActionResult<MissionReport>> UpdateMissionReport(Guid missionReportId, [FromBody] MissionReportDto missionReport)
         {
-            if (!await _missionReportService.MissionReportExists(missionReport.Id))
+            if (!await _missionReportService.MissionReportExists(missionReportId))
             {
                 return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
-            var result = await _missionReportService.UpdateMissionReport(missionReport);
+            var originalMissionReport = await _missionReportService.GetMissionReportById(missionReportId);
+
+            var updatedMissionReport = UpdateMissionReportWithDto(originalMissionReport, missionReport);
+
+            var result = await _missionReportService.UpdateMissionReport(updatedMissionReport);
 
             return result != default
                 ? Ok(new Response<MissionReport>(result).AsSuccess())
@@ -97,8 +102,10 @@ namespace SecretAgency.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<MissionReport>> AddMission([FromBody] MissionReport missionReport)
+        public async Task<ActionResult<MissionReport>> AddMission([FromBody] MissionReportDto missionReportDto)
         {
+            var missionReport = CreateMissionReportFromDto(missionReportDto);
+
             if (await _missionReportService.MissionReportExists(missionReport.Id))
             {
                 return Conflict(new EmptyResponse().AsError(Errors.MissionReportAlreadyExists));
@@ -126,5 +133,21 @@ namespace SecretAgency.Controllers
                 ? Ok(new Response<Guid>(missionReportId).AsSuccess())
                 : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
+
+        private static MissionReport CreateMissionReportFromDto(MissionReportDto original) => new MissionReport()
+        {
+            MissionId = original.MissionId,
+            FieldNotes = original.FieldNotes,
+            TwitterHandle = original.TwitterHandle,
+            Password = original.Password
+        };
+
+        private static MissionReport UpdateMissionReportWithDto(MissionReport original, MissionReportDto update) => original with
+        {
+            MissionId = update.MissionId,
+            FieldNotes = update.FieldNotes,
+            TwitterHandle = update.TwitterHandle,
+            Password = update.Password
+        };
     }
 }

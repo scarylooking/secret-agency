@@ -43,38 +43,45 @@ namespace SecretAgency.Controllers
 
             var result = await _missionService.GetMissionById(missionId);
 
-            return result != default 
-                ? Ok(new Response<Mission>(result).AsSuccess()) 
+            return result != default
+                ? Ok(new Response<Mission>(result).AsSuccess())
                 : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPut]
-        public async Task<ActionResult> UpdateMission([FromBody] Mission mission)
+        [Route("{missionId:guid}")]
+        public async Task<ActionResult> UpdateMission(Guid missionId, [FromBody] MissionDto mission)
         {
-            if (!await _missionService.MissionExists(mission.Id))
+            if (!await _missionService.MissionExists(missionId))
             {
                 return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
             }
 
-            var result = await _missionService.UpdateMission(mission);
+            var originalMission = await _missionService.GetMissionById(missionId);
 
-            return result != default 
-                ? Ok(new Response<Mission>(result).AsSuccess()) 
+            var updatedMission = UpdateMissionWithDto(originalMission, mission);
+
+            var result = await _missionService.UpdateMission(updatedMission);
+
+            return result != default
+                ? Ok(new Response<Mission>(result).AsSuccess())
                 : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
-
+        
         [HttpPost]
-        public async Task<ActionResult> AddMission([FromBody] Mission mission)
+        public async Task<ActionResult> AddMission([FromBody] MissionDto missionDto)
         {
+            var mission = CreateMissionFromDto(missionDto);
+
             if (await _missionService.MissionExists(mission.Id))
             {
                 return Conflict(new EmptyResponse().AsError(Errors.MissionAlreadyExists));
             }
-            
+
             var result = await _missionService.AddMission(mission);
 
-            return result != default 
-                ? Ok(new Response<Mission>(result).AsSuccess()) 
+            return result != default
+                ? Ok(new Response<Mission>(result).AsSuccess())
                 : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
@@ -89,9 +96,29 @@ namespace SecretAgency.Controllers
 
             var result = await _missionService.DeleteMission(missionId);
 
-            return result != default 
-                ? Ok(new EmptyResponse().AsSuccess()) 
+            return result != default
+                ? Ok(new EmptyResponse().AsSuccess())
                 : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
+
+        private static Mission CreateMissionFromDto(MissionDto original) => new Mission()
+        {
+            Title = original.Title,
+            Description = original.Description,
+            Steps = original.Steps,
+            ValidToUTC = original.ValidToUTC,
+            ValidFromUTC = original.ValidFromUTC,
+            Reward = original.Reward
+        };
+
+        private static Mission UpdateMissionWithDto(Mission original, MissionDto update) => original with
+        {
+            Title = update.Title,
+            Description = update.Description,
+            Steps = update.Steps,
+            ValidToUTC = update.ValidToUTC,
+            ValidFromUTC = update.ValidFromUTC,
+            Reward = update.Reward
+        };
     }
 }
