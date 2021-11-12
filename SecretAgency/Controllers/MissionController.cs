@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SecretAgency.Constants;
 using SecretAgency.Models;
 using SecretAgency.Services.Interfaces;
 
@@ -24,63 +25,73 @@ namespace SecretAgency.Controllers
         }
 
         [HttpGet]
-        public async Task<IEnumerable<Mission>> Get()
+        public async Task<ActionResult> Get()
         {
-            return await _missionService.GetAllMissions();
+            var result = await _missionService.GetAllMissions();
+
+            return Ok(new Response<IReadOnlyCollection<Mission>>(result).AsSuccess());
         }
 
         [HttpGet]
         [Route("{missionId:guid}")]
-        public async Task<ActionResult<Mission>> GetMissionById(Guid missionId)
+        public async Task<ActionResult> GetMissionById(Guid missionId)
         {
             if (!await _missionService.MissionExists(missionId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
             }
 
-            var mission = await _missionService.GetMissionById(missionId);
+            var result = await _missionService.GetMissionById(missionId);
 
-            return mission != default ? Ok(mission) : BadRequest(missionId);
+            return result != default 
+                ? Ok(new Response<Mission>(result).AsSuccess()) 
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPut]
-        public async Task<ActionResult<Mission>> UpdateMission([FromBody] Mission mission)
+        public async Task<ActionResult> UpdateMission([FromBody] Mission mission)
         {
             if (!await _missionService.MissionExists(mission.Id))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
             }
 
             var result = await _missionService.UpdateMission(mission);
 
-            return result != default ? Ok(mission) : BadRequest();
+            return result != default 
+                ? Ok(new Response<Mission>(result).AsSuccess()) 
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPost]
-        public async Task<ActionResult<Mission>> AddMission([FromBody] Mission mission)
+        public async Task<ActionResult> AddMission([FromBody] Mission mission)
         {
             if (await _missionService.MissionExists(mission.Id))
             {
-                return Conflict();
+                return Conflict(new EmptyResponse().AsError(Errors.MissionAlreadyExists));
             }
-
+            
             var result = await _missionService.AddMission(mission);
 
-            return result != default ? Ok(mission) : BadRequest();
+            return result != default 
+                ? Ok(new Response<Mission>(result).AsSuccess()) 
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpDelete]
         [Route("{missionId:guid}")]
-        public async Task<ActionResult<Mission>> DeleteMission(Guid missionId)
+        public async Task<ActionResult> DeleteMission(Guid missionId)
         {
             if (!await _missionService.MissionExists(missionId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
             }
 
             var result = await _missionService.DeleteMission(missionId);
 
-            return result ? Ok() : BadRequest();
+            return result != default 
+                ? Ok(new EmptyResponse().AsSuccess()) 
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
     }
 }

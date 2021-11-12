@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SecretAgency.Constants;
 using SecretAgency.Models;
 using SecretAgency.Services.Interfaces;
 
@@ -11,7 +12,7 @@ namespace SecretAgency.Controllers
 {
     [ApiController]
     [AllowAnonymous]
-    [Route("api/missionreport")]
+    [Route("api/missionReport")]
     public class MissionReportController : ControllerBase
     {
         private readonly IMissionReportService _missionReportService;
@@ -25,9 +26,11 @@ namespace SecretAgency.Controllers
 
         [HttpGet]
         [Route("pending")]
-        public async Task<IEnumerable<MissionReport>> GetPending()
+        public async Task<ActionResult> GetPending()
         {
-            return await _missionReportService.GetPendingReports();
+            var result = await _missionReportService.GetPendingReports();
+
+            return Ok(new Response<IReadOnlyCollection<MissionReport>>(result).AsSuccess());
         }
 
         [HttpGet]
@@ -36,12 +39,14 @@ namespace SecretAgency.Controllers
         {
             if (!await _missionReportService.MissionReportExists(missionReportId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
-            var missionReport = await _missionReportService.GetMissionReportById(missionReportId);
+            var result = await _missionReportService.GetMissionReportById(missionReportId);
 
-            return missionReport != default ? Ok(missionReport) : BadRequest();
+            return result != default
+                ? Ok(new Response<MissionReport>(result).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPatch]
@@ -50,12 +55,14 @@ namespace SecretAgency.Controllers
         {
             if (!await _missionReportService.MissionReportExists(missionReportId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
-            var missionReport = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Approved);
+            var result = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Approved);
 
-            return missionReport != default ? Ok(missionReport) : BadRequest();
+            return result != default
+                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPatch]
@@ -64,12 +71,14 @@ namespace SecretAgency.Controllers
         {
             if (!await _missionReportService.MissionReportExists(missionReportId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
-            var missionReport = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Rejected);
+            var result = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Rejected);
 
-            return missionReport != default ? Ok(missionReport) : BadRequest();
+            return result != default
+                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPut]
@@ -77,12 +86,14 @@ namespace SecretAgency.Controllers
         {
             if (!await _missionReportService.MissionReportExists(missionReport.Id))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
             var result = await _missionReportService.UpdateMissionReport(missionReport);
 
-            return result != default ? Ok(missionReport) : BadRequest();
+            return result != default
+                ? Ok(new Response<MissionReport>(result).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpPost]
@@ -90,12 +101,14 @@ namespace SecretAgency.Controllers
         {
             if (await _missionReportService.MissionReportExists(missionReport.Id))
             {
-                return Conflict();
+                return Conflict(new EmptyResponse().AsError(Errors.MissionReportAlreadyExists));
             }
 
             var result = await _missionReportService.AddMissionReport(missionReport);
 
-            return result != default ? Ok(missionReport) : BadRequest();
+            return result != default
+                ? Ok(new Response<MissionReport>(result).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
 
         [HttpDelete]
@@ -104,12 +117,14 @@ namespace SecretAgency.Controllers
         {
             if (!await _missionReportService.MissionReportExists(missionReportId))
             {
-                return NotFound();
+                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
             }
 
             var result = await _missionReportService.DeleteMissionReport(missionReportId);
 
-            return result ? Ok() : BadRequest();
+            return result != default
+                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
+                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
         }
     }
 }
