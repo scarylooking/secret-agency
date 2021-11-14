@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using SecretAgency.Constants;
 using SecretAgency.Models;
 using SecretAgency.Repositories.Interfaces;
 using SecretAgency.Services.Interfaces;
@@ -24,80 +24,115 @@ namespace SecretAgency.Services
             _configuration = configuration;
         }
 
-        public async Task<bool> DeleteMission(Guid id)
+        public async Task<IResult<bool>> DeleteMission(Guid id)
         {
-            try
+            if ((await MissionExists(id)).HasFailedElseReturn(out var missionExists))
             {
-                await _missionRepository.Delete(id);
-                return true;
+                return ServiceResult.Failure<bool>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionExists)
             {
-                _logger.Error(ex, "Failed to delete mission with ID {MissionId}", id);
-                return false;
+                return ServiceResult.Failure<bool>(Errors.MissionNotFound);
             }
+
+            return (await _missionRepository.Delete(id)).HasFailedElseReturn(out var isDeleted)
+                ? ServiceResult.Failure<bool>(Errors.DatabaseError)
+                : ServiceResult.Success(isDeleted);
         }
 
-        public async Task<Mission> UpdateMission(Mission mission)
+        public async Task<IResult<Mission>> UpdateMission(Guid id, MissionDto missionDto)
         {
-            try
+            if ((await MissionExists(id)).HasFailedElseReturn(out var missionExists))
             {
-                await _missionRepository.Update(mission.Id, mission);
-                return mission;
+                return ServiceResult.Failure<Mission>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionExists)
             {
-                _logger.Error(ex, "Failed to update mission with ID {MissionId} to state {@Mission}", mission.Id, mission);
-                return default;
+                return ServiceResult.Failure<Mission>(Errors.MissionNotFound);
             }
+
+            if ((await GetMissionById(id)).HasFailedElseReturn(out var originalMission))
+            {
+                return ServiceResult.Failure<Mission>(Errors.DatabaseError);
+            }
+
+            var updatedMission = ApplyMissionDtoToMissionObject(originalMission, missionDto);
+
+            return (await _missionRepository.Update(id, updatedMission)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<Mission>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<Mission> AddMission(Mission mission)
+        public async Task<IResult<Mission>> AddMission(MissionDto missionDto)
         {
-            try
+            var mission = BuildMissionObjectFromDto(missionDto);
+
+            if ((await MissionExists(mission.Id)).HasFailedElseReturn(out var missionExists))
             {
-                await _missionRepository.Create(mission);
-                return mission;
+                return ServiceResult.Failure<Mission>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (missionExists)
             {
-                _logger.Error(ex, "Failed to create new mission with ID {MissionId} {@Mission}", mission.Id, mission);
-                return default;
+                return ServiceResult.Failure<Mission>(Errors.MissionAlreadyExists);
             }
+
+            return (await _missionRepository.Create(mission)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<Mission>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<IReadOnlyCollection<Mission>> GetAllMissions()
+        public async Task<IResult<IEnumerable<Mission>>> GetAllMissions()
         {
-            try
-            {
-                var result = await _missionRepository.GetAll();
-                return result.ToArray();
-
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "Failed to get all missions");
-                return default;
-            }
+            return (await _missionRepository.GetAll()).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<IEnumerable<Mission>>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<Mission> GetMissionById(Guid id)
+        public async Task<IResult<Mission>> GetMissionById(Guid id)
         {
-            try
+            if ((await MissionExists(id)).HasFailedElseReturn(out var missionExists))
             {
-                var result = await _missionRepository.Get(id);
-                return result;
+                return ServiceResult.Failure<Mission>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionExists)
             {
-                _logger.Error(ex, "Failed to get mission {MissionId}", id);
-                return default;
+                return ServiceResult.Failure<Mission>(Errors.MissionNotFound);
             }
+
+            return (await _missionRepository.Get(id)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<Mission>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<bool> MissionExists(Guid id)
+        public async Task<IResult<bool>> MissionExists(Guid id)
         {
-            return await _missionRepository.Exists(id);
+            return (await _missionRepository.Exists(id)).HasFailedElseReturn(out var missionExists)
+                ? ServiceResult.Failure<bool>(Errors.DatabaseError)
+                : ServiceResult.Success(missionExists);
         }
+
+        private static Mission BuildMissionObjectFromDto(MissionDto original) => new Mission()
+        {
+            Title = original.Title,
+            Description = original.Description,
+            Steps = original.Steps,
+            ValidToUTC = original.ValidToUTC,
+            ValidFromUTC = original.ValidFromUTC,
+            Reward = original.Reward
+        };
+
+        private static Mission ApplyMissionDtoToMissionObject(Mission original, MissionDto update) => original with
+        {
+            Title = update.Title,
+            Description = update.Description,
+            Steps = update.Steps,
+            ValidToUTC = update.ValidToUTC,
+            ValidFromUTC = update.ValidFromUTC,
+            Reward = update.Reward
+        };
     }
 }

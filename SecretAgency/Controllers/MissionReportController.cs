@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SecretAgency.Constants;
 using SecretAgency.Models;
+using SecretAgency.Services;
 using SecretAgency.Services.Interfaces;
 
 namespace SecretAgency.Controllers
@@ -26,128 +27,109 @@ namespace SecretAgency.Controllers
 
         [HttpGet]
         [Route("pending")]
-        public async Task<ActionResult> GetPending()
+        public async Task<ActionResult<IResult<IEnumerable<MissionReport>>>> GetPending()
         {
             var result = await _missionReportService.GetPendingReports();
 
-            return Ok(new Response<IReadOnlyCollection<MissionReport>>(result).AsSuccess());
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            return BadRequest(ControllerResult.Failure<IEnumerable<MissionReport>>(Errors.DatabaseError));
         }
 
         [HttpGet]
         [Route("{missionReportId:guid}")]
-        public async Task<ActionResult<MissionReport>> GetMissionReportById(Guid missionReportId)
+        public async Task<ActionResult<IResult<MissionReport>>> GetMissionReportById(Guid missionReportId)
         {
-            if (!await _missionReportService.MissionReportExists(missionReportId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
-            }
-
             var result = await _missionReportService.GetMissionReportById(missionReportId);
 
-            return result != default
-                ? Ok(new Response<MissionReport>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionReportNotFound))
+            {
+                return NotFound(ControllerResult.Failure<MissionReport>(Errors.MissionReportNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<MissionReport>(Errors.DatabaseError));
+
         }
 
         [HttpPatch]
         [Route("{missionReportId:guid}/approve")]
-        public async Task<ActionResult<MissionReport>> ApproveMissionReport(Guid missionReportId)
+        public async Task<ActionResult<IResult<MissionReport>>> ApproveMissionReport(Guid missionReportId)
         {
-            if (!await _missionReportService.MissionReportExists(missionReportId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
-            }
-
             var result = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Approved);
 
-            return result != default
-                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionReportNotFound))
+            {
+                return NotFound(ControllerResult.Failure<MissionReport>(Errors.MissionReportNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<MissionReport>(Errors.DatabaseError));
         }
 
         [HttpPatch]
         [Route("{missionReportId:guid}/reject")]
-        public async Task<ActionResult<MissionReport>> RejectMissionReport(Guid missionReportId)
+        public async Task<ActionResult<IResult<MissionReport>>> RejectMissionReport(Guid missionReportId)
         {
-            if (!await _missionReportService.MissionReportExists(missionReportId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
-            }
-
             var result = await _missionReportService.SetMissionState(missionReportId, MissionReportApprovalState.Rejected);
 
-            return result != default
-                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionReportNotFound))
+            {
+                return NotFound(ControllerResult.Failure<MissionReport>(Errors.MissionReportNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<MissionReport>(Errors.DatabaseError));
         }
 
         [HttpPut]
         [Route("{missionReportId:guid}")]
-        public async Task<ActionResult<MissionReport>> UpdateMissionReport(Guid missionReportId, [FromBody] MissionReportDto missionReport)
+        public async Task<ActionResult<IResult<MissionReport>>> UpdateMissionReport(Guid missionReportId, [FromBody] MissionReportDto missionReport)
         {
-            if (!await _missionReportService.MissionReportExists(missionReportId))
+            var result = await _missionReportService.UpdateMissionReport(missionReportId, missionReport);
+
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionReportNotFound))
             {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
+                return NotFound(ControllerResult.Failure<MissionReport>(Errors.MissionReportNotFound));
             }
 
-            var originalMissionReport = await _missionReportService.GetMissionReportById(missionReportId);
-
-            var updatedMissionReport = UpdateMissionReportWithDto(originalMissionReport, missionReport);
-
-            var result = await _missionReportService.UpdateMissionReport(updatedMissionReport);
-
-            return result != default
-                ? Ok(new Response<MissionReport>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            return BadRequest(ControllerResult.Failure<MissionReport>(Errors.DatabaseError));
         }
 
         [HttpPost]
-        public async Task<ActionResult<MissionReport>> AddMission([FromBody] MissionReportDto missionReportDto)
+        public async Task<ActionResult<IResult<MissionReport>>> AddMissionReport([FromBody] MissionReportDto missionReportDto)
         {
-            var missionReport = CreateMissionReportFromDto(missionReportDto);
+            var result = await _missionReportService.AddMissionReport(missionReportDto);
 
-            if (await _missionReportService.MissionReportExists(missionReport.Id))
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionAlreadyExists))
             {
-                return Conflict(new EmptyResponse().AsError(Errors.MissionReportAlreadyExists));
+                return Conflict(ControllerResult.Failure<MissionReport>(Errors.MissionAlreadyExists));
             }
 
-            var result = await _missionReportService.AddMissionReport(missionReport);
-
-            return result != default
-                ? Ok(new Response<MissionReport>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            return BadRequest(ControllerResult.Failure<MissionReport>(Errors.DatabaseError));
         }
 
         [HttpDelete]
-        [Route("{missionId:guid}")]
-        public async Task<ActionResult<Mission>> DeleteMission(Guid missionReportId)
+        [Route("{missionReportId:guid}")]
+        public async Task<ActionResult<IResult<bool>>> DeleteMission(Guid missionReportId)
         {
-            if (!await _missionReportService.MissionReportExists(missionReportId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionReportNotFound));
-            }
-
             var result = await _missionReportService.DeleteMissionReport(missionReportId);
 
-            return result != default
-                ? Ok(new Response<Guid>(missionReportId).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionReportNotFound))
+            {
+                return NotFound(ControllerResult.Failure<MissionReport>(Errors.MissionReportNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<bool>(Errors.DatabaseError));
         }
-
-        private static MissionReport CreateMissionReportFromDto(MissionReportDto original) => new MissionReport()
-        {
-            MissionId = original.MissionId,
-            FieldNotes = original.FieldNotes,
-            TwitterHandle = original.TwitterHandle,
-            Password = original.Password
-        };
-
-        private static MissionReport UpdateMissionReportWithDto(MissionReport original, MissionReportDto update) => original with
-        {
-            MissionId = update.MissionId,
-            FieldNotes = update.FieldNotes,
-            TwitterHandle = update.TwitterHandle,
-            Password = update.Password
-        };
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using SecretAgency.Constants;
@@ -16,110 +15,145 @@ namespace SecretAgency.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IMissionReportRepository _missionReportRepository;
+        private readonly IMissionService _missionService;
 
-        public MissionReportService(IConfiguration configuration, IMissionReportRepository missionReportRepository)
+        public MissionReportService(IConfiguration configuration, IMissionReportRepository missionReportRepository, IMissionService missionService)
         {
             _logger = Log.ForContext<MissionReportService>();
             _missionReportRepository = missionReportRepository;
+            _missionService = missionService;
 
             _configuration = configuration;
         }
 
-        public async Task<bool> DeleteMissionReport(Guid id)
+        public async Task<IResult<bool>> DeleteMissionReport(Guid id)
         {
-            try
+            if ((await MissionReportExists(id)).HasFailedElseReturn(out var missionReportExists))
             {
-                await _missionReportRepository.Delete(id);
-                return true;
+                return ServiceResult.Failure<bool>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionReportExists)
             {
-                _logger.Error(ex, "Failed to delete mission report with ID {MissionReportId}", id);
-                return false;
+                return ServiceResult.Failure<bool>(Errors.MissionReportNotFound);
             }
+
+            return (await _missionReportRepository.Delete(id)).HasFailedElseReturn(out var isDeleted)
+                ? ServiceResult.Failure<bool>(Errors.DatabaseError)
+                : ServiceResult.Success(isDeleted);
         }
 
-        public async Task<MissionReport> UpdateMissionReport(MissionReport missionReport)
+        public async Task<IResult<MissionReport>> UpdateMissionReport(Guid id, MissionReportDto missionReportDto)
         {
-            try
+            if ((await MissionReportExists(id)).HasFailedElseReturn(out var missionReportExists))
             {
-                await _missionReportRepository.Update(missionReport.Id, missionReport);
-                return missionReport;
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionReportExists)
             {
-                _logger.Error(ex, "Failed to update mission report with ID {MissionReportId} to state {@MissionReport}", missionReport.Id, missionReport);
-                return default;
+                return ServiceResult.Failure<MissionReport>(Errors.MissionReportNotFound);
             }
+
+            if ((await GetMissionReportById(id)).HasFailedElseReturn(out var originalMissionReport))
+            {
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
+            }
+
+            var updatedMissionReport = ApplyMissionReportDtoToMissionReport(originalMissionReport, missionReportDto);
+
+            return (await _missionReportRepository.Update(id, updatedMissionReport)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<MissionReport>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<MissionReport> AddMissionReport(MissionReport missionReport)
+        public async Task<IResult<MissionReport>> AddMissionReport(MissionReportDto missionReportDto)
         {
-            try
+            var missionReport = BuildMissionReportFromDto(missionReportDto);
+
+            if ((await MissionReportExists(missionReport.Id)).HasFailedElseReturn(out var missionReportExists))
             {
-                await _missionReportRepository.Create(missionReport);
-                return missionReport;
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (missionReportExists)
             {
-                _logger.Error(ex, "Failed to create new mission report with ID {MissionReportId} {@MissionReport}", missionReport.Id, missionReport);
-                return default;
+                return ServiceResult.Failure<MissionReport>(Errors.MissionReportAlreadyExists);
             }
+
+            return (await _missionReportRepository.Create(missionReport)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<MissionReport>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<IReadOnlyCollection<MissionReport>> GetPendingReports()
+        public async Task<IResult<IEnumerable<MissionReport>>> GetPendingReports()
         {
-            try
-            {
-                var result = await _missionReportRepository.GetAllInState(MissionReportApprovalState.Pending);
-                return result.ToArray();
-
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "Failed to get pending mission reports");
-                return default;
-            }
+            return (await _missionReportRepository.GetAllInState(MissionReportApprovalState.Pending)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<IEnumerable<MissionReport>>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<MissionReport> GetMissionReportById(Guid id)
+        public async Task<IResult<MissionReport>> GetMissionReportById(Guid id)
         {
-            try
+            if ((await MissionReportExists(id)).HasFailedElseReturn(out var missionReportExists))
             {
-                var result = await _missionReportRepository.Get(id);
-                return result;
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionReportExists)
             {
-                _logger.Error(ex, "Failed to get mission report {MissionReportId}", id);
-                return default;
+                return ServiceResult.Failure<MissionReport>(Errors.MissionReportNotFound);
             }
+
+            return (await _missionReportRepository.Get(id)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<MissionReport>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<MissionReport> SetMissionState(Guid id, MissionReportApprovalState state)
+        public async Task<IResult<MissionReport>> SetMissionState(Guid id, MissionReportApprovalState state)
         {
-            try
+            if ((await MissionReportExists(id)).HasFailedElseReturn(out var missionReportExists))
             {
-                var missionReport = await _missionReportRepository.Get(id);
-
-                var updatedMissionReport = missionReport with {State = state};
-
-                var result = await _missionReportRepository.Update(id, updatedMissionReport);
-
-                return result;
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
             }
-            catch (Exception ex)
+
+            if (!missionReportExists)
             {
-                _logger.Error(ex, "Failed to set state for mission report {MissionReportId} to {NewState}", id, state);
-                return default;
+                return ServiceResult.Failure<MissionReport>(Errors.MissionReportNotFound);
             }
+
+            if ((await _missionReportRepository.Get(id)).HasFailedElseReturn(out var missionReport))
+            {
+                return ServiceResult.Failure<MissionReport>(Errors.DatabaseError);
+            }
+
+            var updatedMissionReport = missionReport with { State = state };
+
+            return (await _missionReportRepository.Update(id, updatedMissionReport)).HasFailedElseReturn(out var result)
+                ? ServiceResult.Failure<MissionReport>(Errors.DatabaseError)
+                : ServiceResult.Success(result);
         }
 
-        public async Task<bool> MissionReportExists(Guid id)
+        public async Task<IResult<bool>> MissionReportExists(Guid id)
         {
-            return await _missionReportRepository.Exists(id);
+            return (await _missionReportRepository.Exists(id)).HasFailedElseReturn(out var missionExists)
+                ? ServiceResult.Failure<bool>(Errors.DatabaseError)
+                : ServiceResult.Success(missionExists);
         }
 
+        private static MissionReport BuildMissionReportFromDto(MissionReportDto original) => new MissionReport()
+        {
+            MissionId = original.MissionId,
+            FieldNotes = original.FieldNotes,
+            Password = original.Password,
+            TwitterHandle = original.TwitterHandle
+        };
 
+        private static MissionReport ApplyMissionReportDtoToMissionReport(MissionReport original, MissionReportDto update) => original with
+        {
+            FieldNotes = update.FieldNotes,
+            Password = update.Password,
+            TwitterHandle = update.TwitterHandle
+        };
     }
 }

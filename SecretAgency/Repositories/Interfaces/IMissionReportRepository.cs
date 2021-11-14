@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using SecretAgency.Constants;
 using SecretAgency.Models;
+using SecretAgency.Services;
 
 namespace SecretAgency.Repositories.Interfaces
 {
     public interface IMissionReportRepository
     {
-        Task<bool> Delete(Guid id);
-        Task<IEnumerable<MissionReport>> GetAllInState(MissionReportApprovalState state);
-        Task<MissionReport> Get(Guid id);
-        Task<MissionReport> Create(MissionReport mission);
-        Task<MissionReport> Update(Guid id, MissionReport mission);
-        Task<bool> Exists(Guid id);
+        Task<IResult<bool>> Delete(Guid id);
+        Task<IResult<IEnumerable<MissionReport>>> GetAllInState(MissionReportApprovalState state);
+        Task<IResult<MissionReport>> Get(Guid id);
+        Task<IResult<MissionReport>> Create(MissionReport missionReport);
+        Task<IResult<MissionReport>> Update(Guid id, MissionReport missionReport);
+        Task<IResult<bool>> Exists(Guid id);
     }
+
 }

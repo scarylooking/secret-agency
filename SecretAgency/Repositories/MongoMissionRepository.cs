@@ -25,41 +25,90 @@ namespace SecretAgency.Repositories
             _configuration = configuration;
         }
 
-        public async Task<bool> Delete(Guid id)
+        public async Task<IResult<bool>> Delete(Guid id)
         {
-            var result = await _missionCollection.DeleteOneAsync(m => m.Id == id);
-
-            return result.DeletedCount > 0;
+            try
+            {
+                var result = await _missionCollection.DeleteOneAsync(m => m.Id == id);
+                return RepositoryResult.Success(result.DeletedCount > 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to delete mission with ID {MissionID}", id);
+                return RepositoryResult.Failure<bool>();
+            }
         }
 
-        public async Task<IEnumerable<Mission>> GetAll()
+        public async Task<IResult<IEnumerable<Mission>>> GetAll()
         {
-            var result = await _missionCollection.FindAsync(m => true);
-            return result.ToList();
+            try
+            {
+                var result = await _missionCollection.FindAsync(m => true);
+
+                return RepositoryResult.Success(result.ToEnumerable());
+
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to get all missions");
+                return RepositoryResult.Failure<IEnumerable<Mission>>();
+            }
         }
 
-        public async Task<Mission> Get(Guid id)
+        public async Task<IResult<Mission>> Get(Guid id)
         {
-            var result = await _missionCollection.FindAsync(m => m.Id.Equals(id));
-            return result.FirstOrDefault();
+            try
+            {
+                var result = await _missionCollection.FindAsync(m => m.Id.Equals(id));
+                return RepositoryResult.Success(result.FirstOrDefault());
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to get mission with ID {MissionId}", id);
+                return RepositoryResult.Failure<Mission>();
+            }
         }
 
-        public async Task<Mission> Create(Mission mission)
+        public async Task<IResult<Mission>> Create(Mission mission)
         {
-            await _missionCollection.InsertOneAsync(mission);
-            return mission;
+            try
+            {
+                await _missionCollection.InsertOneAsync(mission);
+                return RepositoryResult.Success(mission);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to create new mission {@Mission}", mission);
+                return RepositoryResult.Failure<Mission>();
+            }
         }
 
-        public async Task<Mission> Update(Guid id, Mission mission)
+        public async Task<IResult<Mission>> Update(Guid id, Mission mission)
         {
-            await _missionCollection.ReplaceOneAsync(m => m.Id.Equals(id), mission);
-            return mission;
+            try
+            {
+                await _missionCollection.ReplaceOneAsync(m => m.Id.Equals(id), mission);
+                return RepositoryResult.Success(mission);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to update mission {MissionId}: {NewState}", id, mission);
+                return RepositoryResult.Failure<Mission>();
+            }
         }
 
-        public async Task<bool> Exists(Guid id)
+        public async Task<IResult<bool>> Exists(Guid id)
         {
-            var result = await _missionCollection.CountDocumentsAsync(m => m.Id.Equals(id));
-            return result > 0;
+            try
+            {
+                var result = await _missionCollection.CountDocumentsAsync(m => m.Id.Equals(id));
+                return RepositoryResult.Success(result > 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to determine if mission with ID {MissionId} exists", id);
+                return RepositoryResult.Failure<bool>();
+            }
         }
     }
 }

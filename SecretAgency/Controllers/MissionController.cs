@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SecretAgency.Constants;
 using SecretAgency.Models;
+using SecretAgency.Services;
 using SecretAgency.Services.Interfaces;
 
 namespace SecretAgency.Controllers
@@ -29,96 +29,72 @@ namespace SecretAgency.Controllers
         {
             var result = await _missionService.GetAllMissions();
 
-            return Ok(new Response<IReadOnlyCollection<Mission>>(result).AsSuccess());
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            return BadRequest(ControllerResult.Failure<Mission>(Errors.DatabaseError));
         }
 
         [HttpGet]
         [Route("{missionId:guid}")]
-        public async Task<ActionResult> GetMissionById(Guid missionId)
+        public async Task<ActionResult<IResult<Mission>>> GetMissionById(Guid missionId)
         {
-            if (!await _missionService.MissionExists(missionId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
-            }
-
             var result = await _missionService.GetMissionById(missionId);
 
-            return result != default
-                ? Ok(new Response<Mission>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionNotFound))
+            {
+                return NotFound(ControllerResult.Failure<Mission>(Errors.MissionNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<Mission>(Errors.DatabaseError));
         }
 
         [HttpPut]
         [Route("{missionId:guid}")]
-        public async Task<ActionResult> UpdateMission(Guid missionId, [FromBody] MissionDto mission)
+        public async Task<ActionResult<IResult<Mission>>> UpdateMission(Guid missionId, [FromBody] MissionDto mission)
         {
-            if (!await _missionService.MissionExists(missionId))
+            var result = await _missionService.UpdateMission(missionId, mission);
+
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionNotFound))
             {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
+                return NotFound(ControllerResult.Failure<Mission>(Errors.MissionNotFound));
             }
 
-            var originalMission = await _missionService.GetMissionById(missionId);
-
-            var updatedMission = UpdateMissionWithDto(originalMission, mission);
-
-            var result = await _missionService.UpdateMission(updatedMission);
-
-            return result != default
-                ? Ok(new Response<Mission>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            return BadRequest(ControllerResult.Failure<Mission>(Errors.DatabaseError));
         }
-        
-        [HttpPost]
-        public async Task<ActionResult> AddMission([FromBody] MissionDto missionDto)
-        {
-            var mission = CreateMissionFromDto(missionDto);
 
-            if (await _missionService.MissionExists(mission.Id))
+        [HttpPost]
+        public async Task<ActionResult<IResult<Mission>>> AddMission([FromBody] MissionDto missionDto)
+        {
+            var result = await _missionService.AddMission(missionDto);
+
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionAlreadyExists))
             {
-                return Conflict(new EmptyResponse().AsError(Errors.MissionAlreadyExists));
+                return Conflict(ControllerResult.Failure<Mission>(Errors.MissionAlreadyExists));
             }
 
-            var result = await _missionService.AddMission(mission);
-
-            return result != default
-                ? Ok(new Response<Mission>(result).AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            return BadRequest(ControllerResult.Failure<Mission>(Errors.DatabaseError));
         }
 
         [HttpDelete]
         [Route("{missionId:guid}")]
-        public async Task<ActionResult> DeleteMission(Guid missionId)
+        public async Task<ActionResult<IResult<bool>>> DeleteMission(Guid missionId)
         {
-            if (!await _missionService.MissionExists(missionId))
-            {
-                return NotFound(new EmptyResponse().AsError(Errors.MissionNotFound));
-            }
-
             var result = await _missionService.DeleteMission(missionId);
 
-            return result != default
-                ? Ok(new EmptyResponse().AsSuccess())
-                : BadRequest(new EmptyResponse().AsError(Errors.UnknownError));
+            if (result.IsSuccessful) return Ok(ControllerResult.Success(result.Value));
+
+            if (result.Errors.Contains(Errors.MissionNotFound))
+            {
+                return NotFound(ControllerResult.Failure<bool>(Errors.MissionNotFound));
+            }
+
+            return BadRequest(ControllerResult.Failure<bool>(Errors.DatabaseError));
         }
-
-        private static Mission CreateMissionFromDto(MissionDto original) => new Mission()
-        {
-            Title = original.Title,
-            Description = original.Description,
-            Steps = original.Steps,
-            ValidToUTC = original.ValidToUTC,
-            ValidFromUTC = original.ValidFromUTC,
-            Reward = original.Reward
-        };
-
-        private static Mission UpdateMissionWithDto(Mission original, MissionDto update) => original with
-        {
-            Title = update.Title,
-            Description = update.Description,
-            Steps = update.Steps,
-            ValidToUTC = update.ValidToUTC,
-            ValidFromUTC = update.ValidFromUTC,
-            Reward = update.Reward
-        };
     }
 }

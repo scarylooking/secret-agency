@@ -8,12 +8,12 @@ namespace SecretAgency.Services.Interfaces
 {
     public interface IMissionReportService
     {
-        Task<bool> DeleteMissionReport(Guid id);
-        Task<MissionReport> UpdateMissionReport(MissionReport missionReport);
-        Task<MissionReport> AddMissionReport(MissionReport missionReport);
-        Task<IReadOnlyCollection<MissionReport>> GetPendingReports();
-        Task<MissionReport> GetMissionReportById(Guid id);
-        Task<bool> MissionReportExists(Guid id);
-        Task<MissionReport> SetMissionState(Guid id, MissionReportApprovalState state);
+        Task<IResult<bool>> DeleteMissionReport(Guid id);
+        Task<IResult<MissionReport>> UpdateMissionReport(Guid id, MissionReportDto missionReport);
+        Task<IResult<MissionReport>> AddMissionReport(MissionReportDto missionReport);
+        Task<IResult<IEnumerable<MissionReport>>> GetPendingReports();
+        Task<IResult<MissionReport>> GetMissionReportById(Guid id);
+        Task<IResult<MissionReport>> SetMissionState(Guid id, MissionReportApprovalState state);
+        Task<IResult<bool>> MissionReportExists(Guid id);
     }
 }

@@ -7,11 +7,11 @@ namespace SecretAgency.Services.Interfaces
 {
     public interface IMissionService
     {
-        Task<Mission> AddMission(Mission mission);
-        Task<bool> DeleteMission(Guid missionId);
-        Task<Mission> UpdateMission(Mission updatedMission);
-        Task<IReadOnlyCollection<Mission>> GetAllMissions();
-        Task<Mission> GetMissionById(Guid id);
-        Task<bool> MissionExists(Guid id);
+        Task<IResult<bool>> DeleteMission(Guid id);
+        Task<IResult<Mission>> UpdateMission(Guid id, MissionDto missionDto);
+        Task<IResult<Mission>> AddMission(MissionDto mission);
+        Task<IResult<IEnumerable<Mission>>> GetAllMissions();
+        Task<IResult<Mission>> GetMissionById(Guid id);
+        Task<IResult<bool>> MissionExists(Guid id);
     }
 }

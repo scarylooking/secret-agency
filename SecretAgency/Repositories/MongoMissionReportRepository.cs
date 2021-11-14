@@ -26,41 +26,91 @@ namespace SecretAgency.Repositories
             _configuration = configuration;
         }
 
-        public async Task<bool> Delete(Guid id)
+        public async Task<IResult<bool>> Delete(Guid id)
         {
-            var result = await _missionReportCollection.DeleteOneAsync(m => m.Id == id);
-
-            return result.DeletedCount > 0;
+            try
+            {
+                var result = await _missionReportCollection.DeleteOneAsync(m => m.Id == id);
+                return RepositoryResult.Success(result.DeletedCount > 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to delete mission report with ID {MissionReportID}", id);
+                return RepositoryResult.Failure<bool>();
+            }
         }
 
-        public async Task<IEnumerable<MissionReport>> GetAllInState(MissionReportApprovalState state)
+        public async Task<IResult<IEnumerable<MissionReport>>> GetAllInState(MissionReportApprovalState state)
         {
-            var result = await _missionReportCollection.FindAsync(m => m.State == state);
-            return result.ToList();
+            try
+            {
+                var result = await _missionReportCollection.FindAsync(m => m.State == state);
+                return RepositoryResult.Success(result.ToEnumerable());
+
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to get mission reports in state {State}", state);
+                return RepositoryResult.Failure<IEnumerable<MissionReport>>();
+            }
         }
 
-        public async Task<MissionReport> Get(Guid id)
+        public async Task<IResult<MissionReport>> Get(Guid id)
         {
-            var result = await _missionReportCollection.FindAsync(m => m.Id.Equals(id));
-            return result.FirstOrDefault();
+            try
+            {
+                var result = await _missionReportCollection.FindAsync(m => m.Id.Equals(id));
+                return RepositoryResult.Success(result.FirstOrDefault());
+
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to get mission report with ID {MissionReportId}", id);
+                return RepositoryResult.Failure<MissionReport>();
+            }
         }
 
-        public async Task<MissionReport> Create(MissionReport mission)
+        public async Task<IResult<MissionReport>> Create(MissionReport missionReport)
         {
-            await _missionReportCollection.InsertOneAsync(mission);
-            return mission;
+            try
+            {
+                await _missionReportCollection.InsertOneAsync(missionReport);
+                return RepositoryResult.Success(missionReport);
+
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to create new mission report {@MissionReport}", missionReport);
+                return RepositoryResult.Failure<MissionReport>();
+            }
         }
 
-        public async Task<MissionReport> Update(Guid id, MissionReport mission)
+        public async Task<IResult<MissionReport>> Update(Guid id, MissionReport missionReport)
         {
-            await _missionReportCollection.ReplaceOneAsync(m => m.Id.Equals(id), mission);
-            return mission;
+            try
+            {
+                await _missionReportCollection.ReplaceOneAsync(m => m.Id.Equals(id), missionReport);
+                return RepositoryResult.Success(missionReport);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to update mission report {MissionReportId}: {NewState}", id, missionReport);
+                return RepositoryResult.Failure<MissionReport>();
+            }
         }
 
-        public async Task<bool> Exists(Guid id)
+        public async Task<IResult<bool>> Exists(Guid id)
         {
-            var result = await _missionReportCollection.CountDocumentsAsync(m => m.Id.Equals(id));
-            return result > 0;
+            try
+            {
+                var result = await _missionReportCollection.CountDocumentsAsync(m => m.Id.Equals(id));
+                return RepositoryResult.Success(result > 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to determine if mission report with ID {MissionReportId} exists", id);
+                return RepositoryResult.Failure<bool>();
+            }
         }
     }
 }
