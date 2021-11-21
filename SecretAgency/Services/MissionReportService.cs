@@ -81,6 +81,22 @@ namespace SecretAgency.Services
                 return ServiceResult.Failure<MissionReport>(Errors.MissionReportAlreadyExists);
             }
 
+            var missionResult = await _missionService.GetMissionById(missionReport.MissionId);
+            
+            if (!missionResult.IsSuccessful)
+            {
+                return ServiceResult.Failure<MissionReport>(missionResult.Errors);
+            }
+
+            var mission = missionResult.Value;
+
+            if (mission.HasTimeLimit && (DateTime.UtcNow > mission.ValidToUTC || DateTime.UtcNow < mission.ValidFromUTC))
+            {
+                return ServiceResult.Failure<MissionReport>(Errors.MissionNotAcceptingReports);
+            }
+            
+            // TODO validate that agent ID exists here
+
             return (await _missionReportRepository.Create(missionReport)).HasFailedElseReturn(out var result)
                 ? ServiceResult.Failure<MissionReport>(Errors.DatabaseError)
                 : ServiceResult.Success(result);
